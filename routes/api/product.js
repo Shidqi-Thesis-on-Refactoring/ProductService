@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const product_controller = require("../../controllers/productController");
-const product_validation = require("../../middlewares/validation/validateProduct");
-const handle_images = require("../../middlewares/handleImageMulter");
-const { auth, sellerAuth } = require("../../middlewares/auth");
+const product_validation = require("../../middleware/validation/validateProduct");
+const handle_images = require("../../middleware/handleImageMulter");
+const { auth, sellerAuth } = require("../../middleware/auth");
 
 // @route   GET /api/product
 // @desc    Get all products
@@ -48,5 +48,10 @@ router.post(
   product_validation.validateUpdate,
   product_controller.updateProduct
 );
+
+// @route   POST /api/product/decrement-stock
+// @desc    Decrease stock of product
+// @access  private
+router.patch("/decrement-stock", auth, product_controller.decrementStock);
 
 module.exports = router;

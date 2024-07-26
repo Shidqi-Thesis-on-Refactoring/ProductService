@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const category_controller = require("../../controllers/categoryController");
-const category_validation = require("../../middlewares/validation/validateCategory");
-const { auth, adminAuth, sellerAuth } = require("../../middlewares/auth");
+const category_validation = require("../../middleware/validation/validateCategory");
+const { auth, adminAuth, sellerAuth } = require("../../middleware/auth");
 
 // @route   GET /api/category
 // @desc    Get all categories

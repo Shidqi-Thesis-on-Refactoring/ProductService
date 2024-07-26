@@ -13,6 +13,7 @@ const app = express();
 
 // for body-parser middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended : false }));
 
 //cors middleware
 app.use(cors());
@@ -26,12 +27,12 @@ app.use("/uploads", express.static("uploads"));
 // Database uri
 const dbURI = process.env.DB_URI;
 
-mongoose.connect(dbURI);
-// {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true,
-//     useCreateIndex: true
-//   }
+mongoose.connect(dbURI,
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useCreateIndex: true
+});
 
 //test database connection
 let db = mongoose.connection;

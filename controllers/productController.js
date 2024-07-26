@@ -1,5 +1,7 @@
 const Product = require("../models/ProductModel");
 const User = require("../models/UsersModel");
+const axios = require('axios');
+const AccountService = process.env.ACCOUNTSERVICE_BASE_URI;
 
 // handle GET request at /api/product to get list of all products in stock
 exports.allProducts = (req, res) => {
@@ -24,16 +26,17 @@ exports.allProducts = (req, res) => {
 // paginate is a mongoose external plugin to handle pagination
 exports.userProducts = (req, res) => {
   let page = req.query.page || 1;
-  let perPage = parseInt(req.query.perPage);
+  let perPage = parseInt(req.query.perPage) || 8;
 
   // if the user us admin, let him fetch all the products
   if (req.user.isAdmin) {
+    console.log("masuk");
     Product.paginate(
       {},
       { sort: { creationDate: -1 }, populate: "seller", page: page, limit: perPage },
       (err, result) => {
         if (err) {
-          res.status(400).json({ message: "Couldn't find products" });
+          res.status(400).json({ message: `Couldn't find products. ${err}` });
         } else {
           res.status(200).json({ products: result.docs, pagesCount: result.pages });
         }
@@ -80,7 +83,7 @@ exports.createProduct = (req, res) => {
   newProduct.save(function (err, product) {
     if (err) {
       res.status(400).json({
-        message: "Couldn't create please try again"
+        message: `Couldn't create please try again. ${err}`
       });
     } else {
       res.status(200).json({
@@ -108,9 +111,21 @@ exports.productDetails = (req, res) => {
 // handle DELETE request at /api/product/:id/delete to delete an item by its id
 // we will only allow one user who is "admin" to delete products
 // cause every product has instances and i didn't handle deleting them
-exports.deleteProduct = (req, res) => {
-  User.findById(req.user.id, (err, user) => {
-    if (user.username != "admin") {
+exports.deleteProduct = async (req, res) => {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(401).json('Authorization token is required');
+  }
+
+  try {
+    const user = await axios.get(`${AccountService}/api/users/user`, {
+      headers: {
+        'Authorization': token
+      }
+    })
+
+    if (!user.data.isAdmin) {
       res.status(400).json({ message: "You can't delete, please contact your admin" });
     } else {
       Product.findByIdAndDelete(req.params.id, err => {
@@ -121,7 +136,22 @@ exports.deleteProduct = (req, res) => {
         }
       });
     }
-  });
+  } catch (error) {
+    return res.status(500).json({ message: `Something went wrong. ${error}` });
+  }
+  // User.findById(req.user.id, (err, user) => {
+  //   if (user.username != "admin") {
+  //     res.status(400).json({ message: "You can't delete, please contact your admin" });
+  //   } else {
+  //     Product.findByIdAndDelete(req.params.id, err => {
+  //       if (err) {
+  //         res.status(400).json({ message: "Couldn't delete, try again" });
+  //       } else {
+  //         res.status(200).json({ message: "Deleted Successfully" });
+  //       }
+  //     });
+  //   }
+  // });
 };
 
 // handle POST request at /api/product/:id/update to update an item
@@ -157,3 +187,28 @@ exports.updateProduct = (req, res) => {
     })
     .catch(err => res.json(err));
 };
+
+exports.decrementStock = async (req, res) => {
+  const products = req.body.product;
+
+  try {
+    for (let item of products) {
+      await Product.updateOne(
+        { _id: item.product },
+        { 
+          $inc: { 
+          numberInStock: -item.quantity 
+          } 
+        },
+        { new : true }
+      );
+    }
+    res.status(200).json({ message: 'Stock updated successfully' });
+  } catch (err) {
+    res.status(400).json({
+      message: "Couldn't decrease item's quantity",
+      err
+    });
+  }
+
+}
